@@ -171,6 +171,3 @@ class SNAKE_GAME:
             self.reward -= 10
             self.game_over = True
         
-        
-
-
