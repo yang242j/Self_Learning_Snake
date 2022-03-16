@@ -48,7 +48,10 @@ def play_snake_game():
         #             return
         
 def agent_training():
-    print('Agent Training')
+    print('New Agent Training')
+
+def agent_training_resume():
+    print('Resume Agent Training')
 
 def agent_demo():
     print('Agent Demo')
@@ -75,8 +78,12 @@ if __name__ == '__main__':
         action=play_snake_game
     )
     main_menu.add.button(
-        title='Start AI Training',
+        title='New AI Training',
         action=agent_training
+    )
+    main_menu.add.button(
+        title='Resume AI Training',
+        action=agent_training_resume
     )
     main_menu.add.button(
         title='AI Demo',
