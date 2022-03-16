@@ -1,4 +1,3 @@
-from Snake_Game.AI_agent_game.agent import train
 import config
 import numpy as np
 from pygame.math import Vector2

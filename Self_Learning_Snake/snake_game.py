@@ -155,10 +155,10 @@ class SNAKE_GAME:
     def is_danger(self, pos):
         death_cond_list = [
             # snake head hits the wall
-            pos.x <= 0,
-            pos.y <= 0,
-            pos.x >= config.CELL_NUMBER,
-            pos.y >= config.CELL_NUMBER,
+            pos.x < 0,
+            pos.y < 0,
+            pos.x > config.CELL_NUMBER,
+            pos.y > config.CELL_NUMBER,
             
             # snake_head hits itself
             pos in self.snake.body[1:]   
