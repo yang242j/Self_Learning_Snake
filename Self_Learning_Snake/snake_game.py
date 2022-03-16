@@ -129,6 +129,11 @@ class SNAKE_GAME:
             if event.type == pygame.QUIT:   # Quit the game
                 pygame.quit()
                 sys.exit()
+            if event.type == pygame.KEYDOWN: # User key interaction             
+                e_key = event.key
+                if e_key == pygame.K_ESCAPE:    # esc -> main_menu
+                    self.game_over = True
+                    return self.game_over, self.score
 
         self.snake.direction = Vector2(action_x, action_y)
         self.update()
@@ -147,6 +152,22 @@ class SNAKE_GAME:
         self.food.draw_food()
         self.snake.draw_snake()
 
+    def is_danger(self, pos):
+        death_cond_list = [
+            # snake head hits the wall
+            pos.x <= 0,
+            pos.y <= 0,
+            pos.x >= config.CELL_NUMBER,
+            pos.y >= config.CELL_NUMBER,
+            
+            # snake_head hits itself
+            pos in self.snake.body[1:]   
+        ]
+        if any(death_cond_list):
+            return True
+        else:
+            return False
+
     def status_check(self):
         # snake eat the food
         if self.snake.body[0] == self.food.position:
@@ -157,17 +178,21 @@ class SNAKE_GAME:
         
         # check death conditions
         snake_head = self.snake.body[0]
-        death_cond_list = [
-            # snake head hits the wall
-            snake_head.x <= 0,
-            snake_head.y <= 0,
-            snake_head.x >= config.CELL_NUMBER,
-            snake_head.y >= config.CELL_NUMBER,
-            
-            # snake_head hits itself
-            snake_head in self.snake.body[1:]   
-        ]
-        if any(death_cond_list):
+        if self.is_danger(snake_head):
             self.reward -= 10
             self.game_over = True
+        # death_cond_list = [
+        #     # snake head hits the wall
+        #     snake_head.x <= 0,
+        #     snake_head.y <= 0,
+        #     snake_head.x >= config.CELL_NUMBER,
+        #     snake_head.y >= config.CELL_NUMBER,
+            
+        #     # snake_head hits itself
+        #     snake_head in self.snake.body[1:]   
+        # ]
+        # if any(death_cond_list):
+        #     self.reward -= 10
+        #     self.game_over = True
         
+    

@@ -3,6 +3,7 @@ import config
 import pygame
 import pygame_menu
 from snake_game import SNAKE_GAME
+from snake_agent import AI_TRAINING, AI_TRAINING_RESUME, AI_DEMO
 
 def play_snake_game():
     print('Snake Game start')
@@ -50,6 +51,22 @@ def play_snake_game():
 def agent_training():
     print('New Agent Training')
 
+    # Disable and reset the pygame_menu
+    main_menu.disable()
+    main_menu.full_reset()
+
+    # Create an agent surface
+    agent_surface = pygame.Surface((MAP_W, MAP_W))
+    main_surface.blit(agent_surface, (0, 0))
+    pygame.display.flip()
+    
+    # Start the agent training
+    AI_TRAINING(agent_surface)
+
+    # Training END, return to main_menu
+    main_menu.enable()
+    main_menu.update(pygame.event.get())
+    
 def agent_training_resume():
     print('Resume Agent Training')
 

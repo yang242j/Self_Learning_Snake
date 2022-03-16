@@ -1,5 +1,12 @@
+from Snake_Game.AI_agent_game.agent import train
 import config
+import numpy as np
+from pygame.math import Vector2
 from snake_game import SNAKE_GAME
+import tensorflow as tf
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Input, Flatten, Dense
+from tensorflow.keras.optimizers import Adam
 
 class MODEL:
     def __init__(self) -> None:
@@ -11,28 +18,79 @@ class AGENT:
         self.model = MODEL()
 
     def get_game_state(self, game):
+        food_pos = game.food.position
+        snake_sight = config.SNAKE_SIGHT_DISTANCE
         snake_head = game.snake.body[0]
+        snake_dir = game.snake.direction
 
-        state = [
+        if snake_dir.x == 0:
+            snake_dir_L = Vector2(snake_dir.y, 0)
+            snake_dir_R = Vector2(-snake_dir.y, 0)
+        elif snake_dir.y == 0:
+            snake_dir_L = Vector2(0, -snake_dir.x)
+            snake_dir_R = Vector2(0, snake_dir.x)
 
+        state_status = [
+            # Snake heading direction_x_y [-1, 0, 1]
+            snake_dir.x, 
+            snake_dir.y,
+
+            # Danger detection
+            game.is_danger(snake_head + snake_sight * snake_dir),   # Danger Ahead
+            game.is_danger(snake_head + snake_sight * snake_dir_L),    # Danger Left
+            game.is_danger(snake_head + snake_sight * snake_dir_R),    # Danger Right
+
+            # Food censoring
+            food_pos.x < snake_head.x,
+            food_pos.x > snake_head.x,
+            food_pos.y < snake_head.y,
+            food_pos.y > snake_head.y
         ]
+        # print(state_status)
+        return np.array(state_status, dtype=int)
+
+    def get_action(self, state):
+        if self.round_num <= config.DISCOVERY_ROUNDS:
+            action_list = [
+                Vector2(0, -1), # DIR_UP
+                Vector2(0, 1), # DIR_DOWN
+                Vector2(-1, 0), # DIR_LEFT
+                Vector2(1, 0) # DIR_RIGHT
+            ]
+            rdm_act_idx = np.random.randint(0, 3)
+            return action_list[rdm_act_idx]
+        else:
+            agent_action = self.model.predict(state)
+            return np.rint(agent_action[0])
+
+    def q_learning(self, training_status):
+        old_game_state = training_status[0]
+        agent_action = Vector2(training_status[1], training_status[2])
+        round_reward = training_status[3]
+        game_over = training_status[4]
+        game_score = training_status[5]
+        new_game_state = training_status[6]
 
 class AI_TRAINING:
-    def __init__(self) -> None:
+    def __init__(self, surface) -> None:
+        # Global the game_surface
+        global SURFACE
+        SURFACE = surface
+
+        self.score_record = 0
         self.agent = AGENT()
-        self.game = SNAKE_GAME()
+        self.game = SNAKE_GAME(surface)
         self.training()
 
     def training(self):
-        score_record = 0
         while True:
             # Get the game_state
             game_state = self.agent.get_game_state(self.game)
 
             # Get the agent_action based on the game_state
-            agent_action_tuple = self.agent.get_action(game_state)
-            action_x = agent_action_tuple[0]
-            action_y = agent_action_tuple[1]
+            agent_action_vector = self.agent.get_action(game_state)
+            action_x = agent_action_vector.x
+            action_y = agent_action_vector.y
 
             # Perform the agent_action
             round_reward, game_over, game_score = self.game.agent_play(action_x, action_y)
@@ -41,40 +99,47 @@ class AI_TRAINING:
             new_game_state = self.agent.get_game_state(self.game)
 
             # Integrate training_status
-            round_training_status = [
+            training_status = [
                 game_state,
-                agent_action_tuple,
+                action_x,
+                action_y,
                 round_reward,
-                new_game_state, 
-                game_over
+                game_over,
+                game_score,
+                new_game_state
             ]
 
             # Train the agent based on the round_training_status
-            self.agent.round_training(round_training_status)
+            self.agent.q_learning(training_status)
 
-            # Make agent remember the round_training_status
-            self.agent.archive(round_training_status)
+            # # Make agent remember the round_training_status
+            # self.agent.remember(round_training_status)
 
-            # If the game is over,
-            if game_over:
-                # Reset the game environment
-                self.game.reset_game_state()
+            # # If the game is over,
+            # if game_over:
+            #     # Reset the game environment
+            #     self.game.reset_game_state()
 
-                # Increment training round number
-                self.agent.num_training += 1
+            #     # Increment training round number
+            #     self.agent.round_num += 1
 
-                # Train the agent's long term memory
-                self.agent.train_long_memory()
+            #     # Train the agent's long term memory
+            #     self.agent.training()
 
-                # If the score_record has been break,
-                if game_score > score_record:
-                    score_record = game_score
-                    # self.agent.model.save()
+            #     # Print round_score message
+            #     print('Round', self.agent.round_num, game_score)
 
-                print('Round', self.agent.num_training, 'Score', game_score, 'Record', score_record)
+            #     # If break the score_record, print message and save_model
+            #     if game_score > self.score_record:
+            #         print('Broken Record! New record:', self.score_record)
+            #         self.score_record = game_score
+            #         self.agent.model.save()
 
-                # Ploting and Analysising
+                # Ploting and Analysis
 
+class AI_TRAINING_RESUME:
+    def __init__(self) -> None:
+        pass
 
 class AI_DEMO:
     def __init__(self) -> None:
