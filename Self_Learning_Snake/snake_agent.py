@@ -1,20 +1,50 @@
+import os
 import config
 import numpy as np
 from pygame.math import Vector2
 from snake_game import SNAKE_GAME
 import tensorflow as tf
-from tensorflow.keras.models import Model
-from tensorflow.keras.layers import Input, Flatten, Dense
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Flatten, Dense
 from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.models import load_model
 
-class MODEL:
-    def __init__(self) -> None:
-        pass
+class DQN:
+    def __init__(self, model_file_path, input_shape, output_shape) -> None:
+        if model_file_path == None:
+            # Create new model to train the agent
+            self.__build_new_dqn(input_shape, output_shape)
+        else:
+            # Load the old_model and start from where left
+            self.__load_model(model_file_path)
+
+    def __build_new_dqn(self, input_shape, output_shape):
+        self.dqn_model = Sequential([
+            Flatten(input_shape=(input_shape)),
+            Dense(128, activation='relu'),
+            Dense(output_shape, activation='tanh') # (-1, 0, 1)
+        ])
+        self.dqn_model.compile(
+                optimizer = Adam(learning_rate=config.INIT_LR),
+                loss='mean_square_error'
+              )
+
+    def fit(self, x_train):
+        self.dqn_model.fit(x_train, y_train, batch_size, epochs)
+
+    def __load_model(self, model_file_path):
+        if not os.path.exists(model_file_path):
+            print(model_file_path, 'not exist')
+        self.dqn_model = load_model(model_file_path)
+
+    def save(self, model_file_name='sqn_snake.h5'):
+        filePath = os.path.join(config.MODEL_PATH, model_file_name)
+        self.dqn_model.save(filePath)
 
 class AGENT:
-    def __init__(self) -> None:
+    def __init__(self, model_file_path) -> None:
         self.round_num = 0
-        self.model = MODEL()
+        self.model = DQN(model_file_path)
 
     def get_game_state(self, game):
         food_pos = game.food.position
@@ -71,13 +101,13 @@ class AGENT:
         new_game_state = training_status[6]
 
 class AI_TRAINING:
-    def __init__(self, surface) -> None:
+    def __init__(self, surface, model_file_path=None) -> None:
         # Global the game_surface
         global SURFACE
         SURFACE = surface
 
         self.score_record = 0
-        self.agent = AGENT()
+        self.agent = AGENT(model_file_path)
         self.game = SNAKE_GAME(surface)
         self.training()
 
@@ -136,10 +166,6 @@ class AI_TRAINING:
 
                 # Ploting and Analysis
 
-class AI_TRAINING_RESUME:
-    def __init__(self) -> None:
-        pass
-
 class AI_DEMO:
-    def __init__(self) -> None:
+    def __init__(self, surface, model_file) -> None:
         pass

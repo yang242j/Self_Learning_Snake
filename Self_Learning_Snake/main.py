@@ -3,7 +3,7 @@ import config
 import pygame
 import pygame_menu
 from snake_game import SNAKE_GAME
-from snake_agent import AI_TRAINING, AI_TRAINING_RESUME, AI_DEMO
+from snake_agent import AI_TRAINING, AI_DEMO
 
 def play_snake_game():
     print('Snake Game start')
@@ -33,7 +33,7 @@ def play_snake_game():
             main_menu.update(pygame.event.get())
             return
         
-def agent_training(model_file):
+def agent_training(model_file_path):
     # Disable and reset the pygame_menu
     main_menu.disable()
     main_menu.full_reset()
@@ -43,9 +43,9 @@ def agent_training(model_file):
     main_surface.blit(agent_surface, (0, 0))
     pygame.display.flip()
     
-    if model_file == None:
+    if model_file_path == None:
         print('New Agent Training')
-        # AI_TRAINING(agent_surface)  # Start the agent training
+        AI_TRAINING(agent_surface)  # Start the agent training
     else:
         print('Resume Agent Training')
         # AI_TRAINING(agent_surface, model_file)  # Resume the agent training
@@ -54,7 +54,7 @@ def agent_training(model_file):
     main_menu.enable()
     main_menu.update(pygame.event.get())
 
-def agent_demo(model_file):
+def agent_demo(model_file_path):
     # Disable and reset the pygame_menu
     main_menu.disable()
     main_menu.full_reset()

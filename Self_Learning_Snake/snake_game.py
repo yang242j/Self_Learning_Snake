@@ -181,18 +181,3 @@ class SNAKE_GAME:
         if self.is_danger(snake_head):
             self.reward -= 10
             self.game_over = True
-        # death_cond_list = [
-        #     # snake head hits the wall
-        #     snake_head.x <= 0,
-        #     snake_head.y <= 0,
-        #     snake_head.x >= config.CELL_NUMBER,
-        #     snake_head.y >= config.CELL_NUMBER,
-            
-        #     # snake_head hits itself
-        #     snake_head in self.snake.body[1:]   
-        # ]
-        # if any(death_cond_list):
-        #     self.reward -= 10
-        #     self.game_over = True
-        
-    
