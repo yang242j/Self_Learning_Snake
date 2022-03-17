@@ -32,25 +32,8 @@ def play_snake_game():
             main_menu.enable()
             main_menu.update(pygame.event.get())
             return
-
-        # For events of user interaction
-        # for event in pygame.event.get():
-            
-        #     # Quit the game
-        #     if event.type == pygame.QUIT:
-        #         pygame.quit()
-        #         sys.exit()
-            
-        #     # esc -> main_menu
-        #     if event.type == pygame.KEYDOWN:
-        #         if event.key == pygame.K_ESCAPE:
-        #             main_menu.enable()
-        #             main_menu.update(pygame.event.get())
-        #             return
         
-def agent_training():
-    print('New Agent Training')
-
+def agent_training(model_file):
     # Disable and reset the pygame_menu
     main_menu.disable()
     main_menu.full_reset()
@@ -60,18 +43,35 @@ def agent_training():
     main_surface.blit(agent_surface, (0, 0))
     pygame.display.flip()
     
-    # Start the agent training
-    AI_TRAINING(agent_surface)
+    if model_file == None:
+        print('New Agent Training')
+        # AI_TRAINING(agent_surface)  # Start the agent training
+    else:
+        print('Resume Agent Training')
+        # AI_TRAINING(agent_surface, model_file)  # Resume the agent training
 
     # Training END, return to main_menu
     main_menu.enable()
     main_menu.update(pygame.event.get())
-    
-def agent_training_resume():
-    print('Resume Agent Training')
 
-def agent_demo():
-    print('Agent Demo')
+def agent_demo(model_file):
+    # Disable and reset the pygame_menu
+    main_menu.disable()
+    main_menu.full_reset()
+
+    # Create an agent surface
+    demo_surface = pygame.Surface((MAP_W, MAP_W))
+    main_surface.blit(demo_surface, (0, 0))
+    pygame.display.flip()
+
+    if model_file:
+        print('Agent Demo')
+        # AI_DEMO(demo_surface, model_file) # Start demo
+
+    # Training END, return to main_menu
+    main_menu.enable()
+    main_menu.update(pygame.event.get())
+
 
 if __name__ == '__main__':
     # Init the program
@@ -95,16 +95,19 @@ if __name__ == '__main__':
         action=play_snake_game
     )
     main_menu.add.button(
-        title='New AI Training',
-        action=agent_training
+        'New AI Training',
+        agent_training,
+        None
     )
     main_menu.add.button(
-        title='Resume AI Training',
-        action=agent_training_resume
+        'Resume AI Training',
+        agent_training,
+        'snake_agent.h5'
     )
     main_menu.add.button(
-        title='AI Demo',
-        action=agent_demo
+        'AI Demo',
+        agent_demo,
+        'snake_agent.h5'
     )
     main_menu.add.button(
         title='Quit', 
