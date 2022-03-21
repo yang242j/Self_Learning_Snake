@@ -1,73 +1,87 @@
-import os
 import config
+import random
 import numpy as np
-from pygame.math import Vector2
-from snake_game import SNAKE_GAME
 import tensorflow as tf
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import Flatten, Dense
-from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.models import load_model
-
-class DQN:
-    def __init__(self, model_file_path, input_shape, output_shape) -> None:
-        if model_file_path == None:
-            # Create new model to train the agent
-            self.__build_new_dqn(input_shape, output_shape)
-        else:
-            # Load the old_model and start from where left
-            self.__load_model(model_file_path)
-
-    def __build_new_dqn(self, input_shape, output_shape):
-        self.dqn_model = Sequential([
-            Flatten(input_shape=(input_shape)),
-            Dense(128, activation='relu'),
-            Dense(output_shape, activation='tanh') # (-1, 0, 1)
-        ])
-        self.dqn_model.compile(
-                optimizer = Adam(learning_rate=config.INIT_LR),
-                loss='mean_square_error'
-              )
-
-    def fit(self, x_train):
-        self.dqn_model.fit(x_train, y_train, batch_size, epochs)
-
-    def __load_model(self, model_file_path):
-        if not os.path.exists(model_file_path):
-            print(model_file_path, 'not exist')
-        self.dqn_model = load_model(model_file_path)
-
-    def save(self, model_file_name='sqn_snake.h5'):
-        filePath = os.path.join(config.MODEL_PATH, model_file_name)
-        self.dqn_model.save(filePath)
+from collections import deque
+from dqn import DEEP_Q_LEARNING_NETWORK
 
 class AGENT:
-    def __init__(self, model_file_path) -> None:
-        self.round_num = 0
-        self.model = DQN(model_file_path)
+    def __init__(self, env, model_file_path=None) -> None:
+        self.env = env
+        self.dqn = DEEP_Q_LEARNING_NETWORK()
+        if model_file_path != None:
+            self.dqn = self.dqn.load_model(model_file_path)
+        self.game_record = 0
+        self.round_count = 0
+        self.memory = deque(maxlen=config.MAX_MEMORY)
+        self.stop_training = False
 
-    def get_game_state(self, game):
-        food_pos = game.food.position
+    def demo(self) -> None:
+        # TODO demo play step
+        pass
+
+    def training(self) -> None:
+        """ AGENT.training()
+        training steps:
+        1) Get the current game_state
+        2) Get decided move_dir based on the game_state
+        3) Get the move_reward, is_done status, round_score, by perform the move_dir
+        4) Get the next_game_state, by perform the move_dir
+        5) Integrate the state_move_sample = [game_state, move_dir, move_reward, next_game_state, is_done]
+        6) Train the dqn_model with one sample of game status, state_move_sample
+        7) Store/Remember the state_move_sample into pre-defined memory
+        8) If the game is_done:
+            - Reset game_env
+            - Increment the round_count
+            - If the round_score > game_record:
+                - renew the record, save the model
+            - Train the dqn_model with a batch of state_move_samples
+            - Print round_info, training_status
+        """
+        game_state = self.get_game_state() #1
+        move_dir = self.get_action(game_state) #2
+        move_reward, is_done, round_score = self.play(move_dir) #3
+        next_game_state = self.get_game_state() #4
+        state_move_sample = [game_state, move_dir, move_reward, next_game_state, is_done] #5
+        self.dqn.train(training_sample=state_move_sample, batch_size=1) #6
+        self.memory.append(state_move_sample) #7
+        if is_done: #8
+            self.env.reset_game_state()
+            self.round_count += 1
+            if round_score > self.game_record:
+                print('New record', self.game_record)
+                self.game_record = round_score
+                self.dqn.save_model()
+            self.dqn_batch_train(batch_size=config.BATCH_SIZE)
+            print('Round', self.round_count)
+        if self.game_record == 2:
+            self.stop_training = True
+        return self.stop_training, self.game_record
+
+    def get_game_state(self):
+        food_pos = self.env.food.position
         snake_sight = config.SNAKE_SIGHT_DISTANCE
-        snake_head = game.snake.body[0]
-        snake_dir = game.snake.direction
+        snake_head = self.env.snake.body[0]
+        snake_dir = self.env.snake.direction
 
         if snake_dir.x == 0:
-            snake_dir_L = Vector2(snake_dir.y, 0)
-            snake_dir_R = Vector2(-snake_dir.y, 0)
+            snake_dir_L = config.Vector2(snake_dir.y, 0)
+            snake_dir_R = config.Vector2(-snake_dir.y, 0)
         elif snake_dir.y == 0:
-            snake_dir_L = Vector2(0, -snake_dir.x)
-            snake_dir_R = Vector2(0, snake_dir.x)
+            snake_dir_L = config.Vector2(0, -snake_dir.x)
+            snake_dir_R = config.Vector2(0, snake_dir.x)
 
         state_status = [
-            # Snake heading direction_x_y [-1, 0, 1]
-            snake_dir.x, 
-            snake_dir.y,
+            # Snake 4 heading direction
+            snake_dir == config.DIR_UP, 
+            snake_dir == config.DIR_DOWN,
+            snake_dir == config.DIR_LEFT, 
+            snake_dir == config.DIR_RIGHT,
 
             # Danger detection
-            game.is_danger(snake_head + snake_sight * snake_dir),   # Danger Ahead
-            game.is_danger(snake_head + snake_sight * snake_dir_L),    # Danger Left
-            game.is_danger(snake_head + snake_sight * snake_dir_R),    # Danger Right
+            self.env.is_danger(snake_head + snake_sight * snake_dir),   # Danger Ahead
+            self.env.is_danger(snake_head + snake_sight * snake_dir_L),    # Danger Left
+            self.env.is_danger(snake_head + snake_sight * snake_dir_R),    # Danger Right
 
             # Food censoring
             food_pos.x < snake_head.x,
@@ -79,93 +93,57 @@ class AGENT:
         return np.array(state_status, dtype=int)
 
     def get_action(self, state):
-        if self.round_num <= config.DISCOVERY_ROUNDS:
-            action_list = [
-                Vector2(0, -1), # DIR_UP
-                Vector2(0, 1), # DIR_DOWN
-                Vector2(-1, 0), # DIR_LEFT
-                Vector2(1, 0) # DIR_RIGHT
-            ]
-            rdm_act_idx = np.random.randint(0, 3)
-            return action_list[rdm_act_idx]
+
+        epsilon = 100 - self.round_count
+        onehot_action = [0, 0, 0, 0]
+
+        if random.randint(0, 300) < epsilon:
+            move = random.randint(0, 3)
+            onehot_action[move] = 1
         else:
-            agent_action = self.model.predict(state)
-            return np.rint(agent_action[0])
+            q_pred_list = self.dqn.predict(state)
+            move = tf.math.argmax(q_pred_list).numpy()
+            onehot_action[move] = 1
 
-    def q_learning(self, training_status):
-        old_game_state = training_status[0]
-        agent_action = Vector2(training_status[1], training_status[2])
-        round_reward = training_status[3]
-        game_over = training_status[4]
-        game_score = training_status[5]
-        new_game_state = training_status[6]
+        if onehot_action == [1, 0, 0, 0]:
+            agent_action = config.DIR_LEFT
+        elif onehot_action == [0, 1, 0, 0]:
+            agent_action = config.DIR_RIGHT
+        elif onehot_action == [0, 0, 1, 0]:
+            agent_action = config.DIR_UP
+        elif onehot_action == [0, 0, 0, 1]:
+            agent_action = config.DIR_DOWN
+        else:
+            print('Get wrong action', onehot_action)
 
-class AI_TRAINING:
-    def __init__(self, surface, model_file_path=None) -> None:
-        # Global the game_surface
-        global SURFACE
-        SURFACE = surface
+        return agent_action
 
-        self.score_record = 0
-        self.agent = AGENT(model_file_path)
-        self.game = SNAKE_GAME(surface)
-        self.training()
 
-    def training(self):
-        while True:
-            # Get the game_state
-            game_state = self.agent.get_game_state(self.game)
+        # if self.round_count <= config.BATCH_SIZE:
+        #     action_list = [
+        #         config.DIR_UP,
+        #         config.DIR_DOWN,
+        #         config.DIR_LEFT,
+        #         config.DIR_RIGHT
+        #     ]
+        #     rdm_act_idx = np.random.randint(0, 3)
+        #     return action_list[rdm_act_idx]
+        # else:
+        #     agent_action = self.dqn.predict(state)
+        #     return np.rint(agent_action[0])
 
-            # Get the agent_action based on the game_state
-            agent_action_vector = self.agent.get_action(game_state)
-            action_x = agent_action_vector.x
-            action_y = agent_action_vector.y
+    def play(self, action):
+        return self.env.agent_play(action[0], action[1])
 
-            # Perform the agent_action
-            round_reward, game_over, game_score = self.game.agent_play(action_x, action_y)
+    def dqn_batch_train(self, batch_size):
+        if len(self.memory) < batch_size:
+            # memory is less short, collect all
+            sample_batch = self.memory
+            print(self.memory)
+        else:
+            # collect a random batch of samples from memory
+            sample_batch = random.sample(self.memory, batch_size)
 
-            # Get new_game_state
-            new_game_state = self.agent.get_game_state(self.game)
-
-            # Integrate training_status
-            training_status = [
-                game_state,
-                action_x,
-                action_y,
-                round_reward,
-                game_over,
-                game_score,
-                new_game_state
-            ]
-
-            # Train the agent based on the round_training_status
-            self.agent.q_learning(training_status)
-
-            # # Make agent remember the round_training_status
-            # self.agent.remember(round_training_status)
-
-            # # If the game is over,
-            # if game_over:
-            #     # Reset the game environment
-            #     self.game.reset_game_state()
-
-            #     # Increment training round number
-            #     self.agent.round_num += 1
-
-            #     # Train the agent's long term memory
-            #     self.agent.training()
-
-            #     # Print round_score message
-            #     print('Round', self.agent.round_num, game_score)
-
-            #     # If break the score_record, print message and save_model
-            #     if game_score > self.score_record:
-            #         print('Broken Record! New record:', self.score_record)
-            #         self.score_record = game_score
-            #         self.agent.model.save()
-
-                # Ploting and Analysis
-
-class AI_DEMO:
-    def __init__(self, surface, model_file) -> None:
-        pass
+        # Send to deep q-learning network to lean/train/fit
+        states, actions, rewards, next_states, is_dones = zip(*sample_batch)
+        self.dqn.train(training_sample=[states, actions, rewards, next_states, is_dones], batch_size=batch_size)

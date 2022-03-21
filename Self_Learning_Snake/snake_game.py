@@ -5,10 +5,6 @@ import pygame
 from pygame.math import Vector2
 
 SURFACE = None
-DIR_UP = Vector2(0, -1)
-DIR_DOWN = Vector2(0, 1)
-DIR_LEFT = Vector2(-1, 0)
-DIR_RIGHT = Vector2(1, 0)
 
 class SNAKE:
     def __init__(self) -> None:
@@ -18,7 +14,7 @@ class SNAKE:
     def reset(self):
         # Init or Reset the snake body position and the head direction
         self.body = [Vector2(5,10),Vector2(4,10),Vector2(3,10)]
-        self.direction = DIR_RIGHT
+        self.direction = config.DIR_RIGHT
         self.grow = False
 
     def draw_snake(self):
@@ -71,13 +67,17 @@ class MAP:
         pygame.display.set_caption('The Snake Game')
 
 class SNAKE_GAME:
-    def __init__(self, surface) -> None:
+    def __init__(self, surface, agent=False) -> None:
         # Global the game_surface
         global SURFACE
         SURFACE = surface
 
         # Init pygame settings
-        pygame.time.set_timer(pygame.USEREVENT, config.PLAYER_EVENT_DELAY)
+        if agent:
+            event_delay = config.AGENT_EVENT_DELAY
+        else:
+            event_delay = config.PLAYER_EVENT_DELAY
+        pygame.time.set_timer(pygame.USEREVENT, event_delay)
         pygame.time.Clock().tick(config.FPS)
         
         # Init the game
@@ -104,14 +104,14 @@ class SNAKE_GAME:
             if event.type == pygame.KEYDOWN: # User key interaction             
                 e_key = event.key
                 snake_dir = self.snake.direction
-                if e_key == pygame.K_UP and snake_dir != DIR_DOWN:
-                    self.snake.direction = DIR_UP
-                if e_key == pygame.K_DOWN and snake_dir != DIR_UP:
-                    self.snake.direction = DIR_DOWN
-                if e_key == pygame.K_LEFT and snake_dir != DIR_RIGHT:
-                    self.snake.direction = DIR_LEFT
-                if e_key == pygame.K_RIGHT and snake_dir != DIR_LEFT:
-                    self.snake.direction = DIR_RIGHT
+                if e_key == pygame.K_UP and snake_dir != config.DIR_DOWN:
+                    self.snake.direction = config.DIR_UP
+                if e_key == pygame.K_DOWN and snake_dir != config.DIR_UP:
+                    self.snake.direction = config.DIR_DOWN
+                if e_key == pygame.K_LEFT and snake_dir != config.DIR_RIGHT:
+                    self.snake.direction = config.DIR_LEFT
+                if e_key == pygame.K_RIGHT and snake_dir != config.DIR_LEFT:
+                    self.snake.direction = config.DIR_RIGHT
                 if e_key == pygame.K_ESCAPE:    # esc -> main_menu
                     self.game_over = True
                     return self.game_over, self.score
@@ -135,7 +135,10 @@ class SNAKE_GAME:
                     self.game_over = True
                     return self.game_over, self.score
 
-        self.snake.direction = Vector2(action_x, action_y)
+        agent_action = Vector2(action_x, action_y)
+        if agent_action == self.snake.direction:
+            self.reward -= 5
+        self.snake.direction = agent_action
         self.update()
         SURFACE.fill(config.MAP_COLOR)
         self.draw_elements()
