@@ -109,12 +109,12 @@ if __name__ == '__main__':
     main_menu.add.button(
         'Resume AI Training',
         agent_training,
-        'snake_agent.h5'
+        'model/dqn_snake.h5'
     )
     main_menu.add.button(
         'AI Demo',
         agent_demo,
-        'snake_agent.h5'
+        'model/dqn_snake.h5'
     )
     main_menu.add.button(
         title='Quit', 

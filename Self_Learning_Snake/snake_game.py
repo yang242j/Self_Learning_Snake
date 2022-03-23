@@ -12,9 +12,17 @@ class SNAKE:
         self.draw_snake()
 
     def reset(self):
-        # Init or Reset the snake body position and the head direction
-        self.body = [Vector2(5,10),Vector2(4,10),Vector2(3,10)]
-        self.direction = config.DIR_RIGHT
+        # Init or Reset the snake body position
+        x_middle = int(config.CELL_NUMBER/2)
+        y_middle = int(config.CELL_NUMBER/2)
+        y_2 = int(y_middle + 1)
+        y_3 = int(y_middle + 2)
+        self.body = [
+            Vector2(x_middle, y_middle),    # Cell_1, Head
+            Vector2(x_middle, y_2),         # Cell_2, Body
+            Vector2(x_middle, y_3)          # Cell_3, Tail
+            ]
+        self.direction = config.DIR_UP
         self.grow = False
 
     def draw_snake(self):
@@ -132,12 +140,10 @@ class SNAKE_GAME:
             if event.type == pygame.KEYDOWN: # User key interaction             
                 e_key = event.key
                 if e_key == pygame.K_ESCAPE:    # esc -> main_menu
-                    self.game_over = True
-                    return self.game_over, self.score
+                    stop_training = True
+                    return stop_training, self.reward, self.game_over, self.score
 
         agent_action = Vector2(action_x, action_y)
-        if agent_action == self.snake.direction:
-            self.reward -= 5
         self.snake.direction = agent_action
         self.update()
         SURFACE.fill(config.MAP_COLOR)
@@ -145,7 +151,8 @@ class SNAKE_GAME:
         pygame.display.update()
 
         # Return game_over_status & game_score
-        return self.reward, self.game_over, self.score
+        stop_training = False
+        return stop_training, self.reward, self.game_over, self.score
 
     def update(self):
         self.snake.move_snake()
@@ -154,22 +161,6 @@ class SNAKE_GAME:
     def draw_elements(self):
         self.food.draw_food()
         self.snake.draw_snake()
-
-    def is_danger(self, pos):
-        death_cond_list = [
-            # snake head hits the wall
-            pos.x < 0,
-            pos.y < 0,
-            pos.x > config.CELL_NUMBER,
-            pos.y > config.CELL_NUMBER,
-            
-            # snake_head hits itself
-            pos in self.snake.body[1:]   
-        ]
-        if any(death_cond_list):
-            return True
-        else:
-            return False
 
     def status_check(self):
         # snake eat the food
@@ -184,3 +175,19 @@ class SNAKE_GAME:
         if self.is_danger(snake_head):
             self.reward -= 10
             self.game_over = True
+
+    def is_danger(self, pos):
+        death_cond_list = [
+            # snake head hits the wall
+            pos.x < 0,
+            pos.y < 0,
+            pos.x > config.CELL_NUMBER-1,
+            pos.y > config.CELL_NUMBER-1,
+            
+            # snake_head hits itself
+            pos in self.snake.body[1:]   
+        ]
+        if any(death_cond_list):
+            return True
+        else:
+            return False
