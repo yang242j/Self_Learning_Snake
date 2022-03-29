@@ -8,7 +8,7 @@ AGENT_EVENT_DELAY = 10
 # Define game map size
 FPS = 60
 CELL_NUMBER = 20 # Number of cells in both map direction
-CELL_SIZE = 40 # How wide or tall each cell is
+CELL_SIZE = 20 # How wide or tall each cell is
 
 # Define snake direction 
 DIR_UP = Vector2(0, -1)
@@ -29,8 +29,8 @@ SNAKE_CELL_HP = 100
 MAX_MEMORY = 1000000
 BATCH_SIZE = 64
 EPSILON = 1.0
-EPSILON_DECAY_RATE = 0.99
+EPSILON_DECAY_RATE = 0.9998
 EPSILON_MIN = 0.01
 AVERAGE_RATE = 0.01 # TAU
-LEARNING_RATE = 0.00025 # ALPHA
+LEARNING_RATE = 0.0025 # ALPHA
 DISCOUNT_RATE = 0.99 # GAMMA < 1 

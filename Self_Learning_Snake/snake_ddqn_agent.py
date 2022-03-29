@@ -1,3 +1,4 @@
+from enum import auto
 import os
 import copy
 import config
@@ -66,9 +67,6 @@ class NeuralNetwork(object):
             InputLayer(input_shape=(input_shape,)),
             Dense(fc_dim, activation='relu'),
             Dense(fc_dim, activation='relu'),
-            # Dense(fc_dim, activation='relu'),
-            # Dense(fc_dim, activation='relu'),
-            # Dense(fc_dim, activation='relu'),
             Dense(output_shape)
         ])
         self.model.compile(
@@ -105,6 +103,7 @@ class DDQN_Agent(object):
         if model_file_path:
             self.file_path = model_file_path
             self.load_model()
+            self.epsilon=EPSILON_MIN
 
         self.plot_scores = []
         self.plot_mean_scores = []
@@ -262,7 +261,7 @@ class DDQN_Agent(object):
         
         state_action_sample = [curr_state, onehot_action, move_reward, new_state, is_done]
         self.remember(state_action_sample)
-        # _ = self.learn([state_action_sample], batch_size=1)
+        # self.learn([state_action_sample], batch_size=1)
         
         if is_done:
             self.env.reset_game_state()
@@ -271,11 +270,10 @@ class DDQN_Agent(object):
                 print('New record:', self.game_record)
                 self.save_model(self.default_file_path)
             sample_batch, new_batch_size = self.memory.random_sample(batch_size=BATCH_SIZE)
-            mse_loss = 0
             if new_batch_size != 0:
-                mse_loss = self.learn(sample_batch, batch_size=new_batch_size)            
+                self.learn(sample_batch, batch_size=new_batch_size)            
             self.round_count += 1
-            print('Round', self.round_count, 'Score', round_score, 'Record', self.game_record, 'MSE_loss', mse_loss, 'Epsilon', self.epsilon)
+            print('Round', self.round_count, 'Score', round_score, 'Record', self.game_record, 'Epsilon %.4f' % self.epsilon)
                        
             # TODO: Print traning messages and plots
             self.plot_scores.append(round_score)
@@ -287,6 +285,7 @@ class DDQN_Agent(object):
         return self.stop_training, self.game_record
     
     def learn(self, training_sample, batch_size):
+        # print('training_sample', training_sample)
         # Data processing
         assert len(training_sample) == batch_size
         curr_states, onehot_actions, move_rewards, new_states, is_dones = zip(*training_sample)
@@ -294,8 +293,7 @@ class DDQN_Agent(object):
         onehot_actions = np.array(onehot_actions, dtype=np.int32)
         move_rewards = np.array(move_rewards, dtype=np.float32)
         new_states = np.array(new_states, dtype=np.float32)
-        action_idx_range = np.array([0, 1, 2], dtype=np.int32)
-        action_idx = np.dot(onehot_actions, action_idx_range) #(n, 3) dot (3,) => n
+        is_dones = np.array(is_dones, dtype=np.int32)
 
         """"""""
         # predict current state Q-values by using both model
@@ -306,29 +304,27 @@ class DDQN_Agent(object):
         q_eval_new = self.dqn_eval_model.predict(new_states)
         q_targ_new = self.dqn_targ_model.predict(new_states)
         
+        # Calculate new target Q-values
+        max_act_idx = np.argmax(q_targ_new, axis=1).astype(int)
+        sample_idx_range = np.arange(batch_size, dtype=np.int32)
+        new_q_target = move_rewards + GAMMA * q_eval_new[sample_idx_range, max_act_idx] * (1-is_dones)
+        # print('done flag', is_dones, 'reward', move_rewards, 'q_eval_new', q_eval_new[sample_idx_range, max_act_idx], 'new_q_target', new_q_target)
+
         # Update new q_targets
         updated_q_targets = q_eval.copy()
-        max_act_idx = np.argmax(q_targ_new, axis=1).astype(np.int32)
-        sample_idx = np.arange(batch_size, dtype=np.int32)
-        updated_q_targets[sample_idx, action_idx] = move_rewards + GAMMA * q_eval_new[sample_idx, max_act_idx] * (1-bool(is_dones))
-        
+        action_idx_range = np.arange(3, dtype=np.int8)
+        action_idx = np.dot(onehot_actions, action_idx_range) #(n, 3) dot (3,) => n
+        updated_q_targets[sample_idx_range, action_idx] = new_q_target
+
         # Fit dqn_eval_model with curr_states and updated_q_targets
         self.dqn_eval_model.fit(curr_states, updated_q_targets, batch_size, verbose_level=0)
         """"""""
-        
-        # Calculate Mean_Squared_Error loss
-        mse_loss = mean_squared_error(q_eval, updated_q_targets).numpy()[0]
 
         # Decay epsilon
-        if self.epsilon > EPSILON_MIN:
-            self.epsilon = self.epsilon * EPSILON_DECAY_RATE 
-        else:
-            # print('epsilon reaches minimum', EPSILON_MIN)
-            self.epsilon = EPSILON_MIN
+        self.epsilon = max(self.epsilon*EPSILON_DECAY_RATE, EPSILON_MIN)
+        # self.epsilon = EPSILON_MIN if self.round_count > 100 else self.epsilon*EPSILON_DECAY_RATE
         
         # Sync. dqn_targ_model with weights of dqn_eval_model
         if self.round_count != 0 and self.round_count % 100 == 0:
             self.sync_model()
-
-        return mse_loss
 

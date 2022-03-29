@@ -127,7 +127,7 @@ if __name__ == '__main__':
     main_menu.add.button(
         'AI Demo',
         agent_demo,
-        'model/ddqn_snake.h5'
+        'model/ddqn_snake_demo.h5'
     )
     main_menu.add.button(
         title='Quit', 

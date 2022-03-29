@@ -15,12 +15,14 @@ class SNAKE:
 
     def reset(self):
         # Init or Reset the snake body position
-        x_middle = int(config.CELL_NUMBER/2)
-        y_middle = int(config.CELL_NUMBER/2)
-        y_2 = int(y_middle + 1)
-        y_3 = int(y_middle + 2)
+        # x_middle = int(config.CELL_NUMBER/2)
+        # y_middle = int(config.CELL_NUMBER/2)
+        # y_2 = int(y_middle + 1)
+        # y_3 = int(y_middle + 2)
+        x_rand = int(random.randint(0, config.CELL_NUMBER))
+        y_rand = int(random.randint(0, config.CELL_NUMBER))
         self.body = [
-            Vector2(x_middle, y_middle)
+            Vector2(x_rand, y_rand)
             ]
         self.direction = config.DIR_UP
         self.grow = False
@@ -165,7 +167,7 @@ class SNAKE_GAME:
         # snake eat the food
         if self.snake.body[0] == self.food.position:
             self.score += 1
-            self.reward += 30
+            self.reward = 30
             self.snake.grow = True
             self.food.get_random_pos(self.snake.body)
             self.health_point = config.SNAKE_CELL_HP * len(self.snake.body)
@@ -173,7 +175,7 @@ class SNAKE_GAME:
         # check death conditions
         snake_head = self.snake.body[0]
         if self.is_danger(snake_head) or self.health_point==0:
-            self.reward -= 100
+            self.reward = -100
             self.game_over = True
 
         # Moveing torward food or away from food
@@ -181,9 +183,9 @@ class SNAKE_GAME:
         food_pos = self.food.position
         new_food_snake_dis = (snake_pos.x - food_pos.x)**2 + (snake_pos.y - food_pos.y)**2
         if new_food_snake_dis < self.food_snake_dis:
-            self.reward += 1
+            self.reward = 1
         elif new_food_snake_dis > self.food_snake_dis:
-            self.reward -= 5
+            self.reward = -5
         self.food_snake_dis = new_food_snake_dis
 
     def is_danger(self, pos):
