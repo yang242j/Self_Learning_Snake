@@ -88,14 +88,14 @@ class SNAKE_GAME:
         self.snake = SNAKE()
         self.food = FOOD(self.snake.body)
         self.reset_game_state()
-        # self.action_queue = deque(maxlen=4)
 
     def reset_game_state(self):
         self.snake.reset()
         self.food.get_random_pos(self.snake.body)
         self.score = 0
         self.reward = 0
-        # self.health_point = config.SNAKE_CELL_HP * len(self.snake.body)
+        self.health_point = config.SNAKE_CELL_HP * len(self.snake.body)
+        self.food_snake_dis = (config.CELL_NUMBER + config.CELL_NUMBER) ** 2
         self.game_over = False
 
     def user_play(self):
@@ -153,7 +153,7 @@ class SNAKE_GAME:
         return stop_training, self.reward, self.game_over, self.score
 
     def update(self):
-        # self.health_point -= 1
+        self.health_point -= 1
         self.snake.move_snake()
         self.status_check()
 
@@ -165,15 +165,26 @@ class SNAKE_GAME:
         # snake eat the food
         if self.snake.body[0] == self.food.position:
             self.score += 1
-            self.reward += 10
+            self.reward += 30
             self.snake.grow = True
             self.food.get_random_pos(self.snake.body)
+            self.health_point = config.SNAKE_CELL_HP * len(self.snake.body)
 
         # check death conditions
         snake_head = self.snake.body[0]
-        if self.is_danger(snake_head):
-            self.reward -= 10
+        if self.is_danger(snake_head) or self.health_point==0:
+            self.reward -= 100
             self.game_over = True
+
+        # Moveing torward food or away from food
+        snake_pos = self.snake.body[0]
+        food_pos = self.food.position
+        new_food_snake_dis = (snake_pos.x - food_pos.x)**2 + (snake_pos.y - food_pos.y)**2
+        if new_food_snake_dis < self.food_snake_dis:
+            self.reward += 1
+        elif new_food_snake_dis > self.food_snake_dis:
+            self.reward -= 5
+        self.food_snake_dis = new_food_snake_dis
 
     def is_danger(self, pos):
         death_cond_list = [

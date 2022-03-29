@@ -22,7 +22,7 @@ FOOD_COLOR = (255, 0, 0)
 SNAKE_COLOR = (0, 0, 0)
 # SNAKE_BODY_COLOR = (0, 215, 0)
 # SNAKE_TAIL_COLOR = (0, 0, 215)
-# SNAKE_CELL_HP = 100
+SNAKE_CELL_HP = 100
 
 # Define training parameters
 # MODEL_PATH = 'model'
