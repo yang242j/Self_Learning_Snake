@@ -20,9 +20,7 @@ class SNAKE:
         y_2 = int(y_middle + 1)
         y_3 = int(y_middle + 2)
         self.body = [
-            Vector2(x_middle, y_middle),    # Cell_1, Head
-            Vector2(x_middle, y_2),         # Cell_2, Body
-            Vector2(x_middle, y_3)          # Cell_3, Tail
+            Vector2(x_middle, y_middle)
             ]
         self.direction = config.DIR_UP
         self.grow = False
@@ -35,12 +33,7 @@ class SNAKE:
                 config.CELL_SIZE,
                 config.CELL_SIZE
             )
-            if index == 0: # Head
-                pygame.draw.rect(SURFACE, config.SNAKE_HEAD_COLOR, body_block_rect)
-            elif index == len(self.body)-1: # Tail
-                pygame.draw.rect(SURFACE, config.SNAKE_TAIL_COLOR, body_block_rect)
-            else: # Snake Body
-                pygame.draw.rect(SURFACE, config.SNAKE_BODY_COLOR, body_block_rect)
+            pygame.draw.rect(SURFACE, config.SNAKE_COLOR, body_block_rect)
 
     def move_snake(self):
         self.body.insert(0, self.body[0]+self.direction)
@@ -102,6 +95,7 @@ class SNAKE_GAME:
         self.food.get_random_pos(self.snake.body)
         self.score = 0
         self.reward = 0
+        # self.health_point = config.SNAKE_CELL_HP * len(self.snake.body)
         self.game_over = False
 
     def user_play(self):
@@ -159,6 +153,7 @@ class SNAKE_GAME:
         return stop_training, self.reward, self.game_over, self.score
 
     def update(self):
+        # self.health_point -= 1
         self.snake.move_snake()
         self.status_check()
 
@@ -170,31 +165,25 @@ class SNAKE_GAME:
         # snake eat the food
         if self.snake.body[0] == self.food.position:
             self.score += 1
-            self.reward += 100
+            self.reward += 10
             self.snake.grow = True
             self.food.get_random_pos(self.snake.body)
-
-        # snake doing circle motion
-        # circle_motion = [[0, -1], [1, 0], [0, 1], [-1, 0]] # up, right, down, left
-        # listed_action_queue = [[vec.x, vec.y] for vec in list(self.action_queue)]
-        # if sorted(listed_action_queue) == sorted(circle_motion):
-        #     self.reward -= 5
 
         # check death conditions
         snake_head = self.snake.body[0]
         if self.is_danger(snake_head):
-            self.reward -= 50
+            self.reward -= 10
             self.game_over = True
 
     def is_danger(self, pos):
         death_cond_list = [
-            # snake head hits the wall
+            # pos in the wall
             pos.x < 0,
             pos.y < 0,
             pos.x > config.CELL_NUMBER-1,
             pos.y > config.CELL_NUMBER-1,
             
-            # snake_head hits itself
+            # pos in snake body
             pos in self.snake.body[1:]   
         ]
         if any(death_cond_list):

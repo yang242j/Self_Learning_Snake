@@ -70,18 +70,31 @@ def agent_demo(model_file_path):
     main_menu.disable()
     main_menu.full_reset()
 
-    # Create an agent surface
+    print('Agent Demo')
+
+    # Create a demo surface
     demo_surface = pygame.Surface((MAP_W, MAP_W))
-    main_surface.blit(demo_surface, (0, 0))
-    pygame.display.flip()
 
-    if model_file_path:
-        print('Agent Demo')
-        # AI_DEMO(demo_surface, model_file) # Start demo
+    # Init the game and agent
+    game_env = SNAKE_GAME(demo_surface, agent=False)
+    agent = DDQN_Agent(game_env, model_file_path)
 
-    # Training END, return to main_menu
-    main_menu.enable()
-    main_menu.update(pygame.event.get())
+    
+
+    while model_file_path:
+        # Built and flip the game_surface onto the main_surface
+        main_surface.blit(demo_surface, (0, 0))
+        pygame.display.flip()
+
+        # Start demo
+        end_demo, demo_record = agent.demo()
+
+        # End demo
+        if end_demo == True:
+            print('Highest Demo Record:', demo_record)
+            main_menu.enable()
+            main_menu.update(pygame.event.get())
+            return
 
 if __name__ == '__main__':
     # Init the program

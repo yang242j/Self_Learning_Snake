@@ -10,6 +10,8 @@ from tensorflow.keras.layers import InputLayer, Dense
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.losses import mean_squared_error
 from pygame.math import Vector2
+import matplotlib.pyplot as plt
+from IPython import display
 
 """
 0 = all messages are logged (default behavior)
@@ -43,11 +45,12 @@ class ReplayMemory(object):
 
     def random_sample(self, batch_size):
         if len(self.memory) < batch_size:
-            sample_batch = self.memory
+            # sample_batch = self.memory
+            return [], 0
         else:
             sample_batch = random.sample(self.memory, batch_size)
-        batch_size = len(sample_batch)
-        return sample_batch, batch_size
+            new_batch_size = len(sample_batch)
+            return sample_batch, new_batch_size
 
 class NeuralNetwork(object):
     def __init__(self, input_shape, output_shape, fc_dim, learning_rate, model_file_path=None) -> None:
@@ -63,12 +66,14 @@ class NeuralNetwork(object):
             InputLayer(input_shape=(input_shape,)),
             Dense(fc_dim, activation='relu'),
             Dense(fc_dim, activation='relu'),
-            Dense(fc_dim, activation='relu'),
+            # Dense(fc_dim, activation='relu'),
+            # Dense(fc_dim, activation='relu'),
+            # Dense(fc_dim, activation='relu'),
             Dense(output_shape)
         ])
         self.model.compile(
             optimizer = Adam(learning_rate=learning_rate),
-            loss='mean_squared_error'
+            loss='mse'
         )
 
     def fit(self, x_train, y_train, batch_size, verbose_level):
@@ -89,13 +94,21 @@ class DDQN_Agent(object):
     def __init__(self, game_env, model_file_path=None) -> None:
         self.env = game_env
         self.memory = ReplayMemory()
-        self.dqn_eval_model = NeuralNetwork(input_shape=11, output_shape=3, fc_dim=128, learning_rate=LR)
-        self.dqn_targ_model = NeuralNetwork(input_shape=11, output_shape=3, fc_dim=128, learning_rate=LR)
+        self.dqn_eval_model = NeuralNetwork(input_shape=19, output_shape=3, fc_dim=256, learning_rate=LR)
+        self.dqn_targ_model = NeuralNetwork(input_shape=19, output_shape=3, fc_dim=256, learning_rate=LR)
         self.game_record = 0
         self.round_count = 0
         self.epsilon = EPSILON
         self.stop_training = False
-        self.input_path = model_file_path
+        self.default_file_path = 'model/ddqn_snake.h5'
+        self.file_path = None
+        if model_file_path:
+            self.file_path = model_file_path
+            self.load_model()
+
+        self.plot_scores = []
+        self.plot_mean_scores = []
+        self.total_score = 0
     
     def remember(self, sample_list):
         # Append the list of game status to the memory
@@ -124,28 +137,44 @@ class DDQN_Agent(object):
 
         if snake_dir.x == 0:
             snake_dir_L = Vector2(snake_dir.y, 0)
+            snake_dir_LU = Vector2(snake_dir.y, snake_dir.y)
+            snake_dir_LD = Vector2(snake_dir.y, -snake_dir.y)
             snake_dir_R = Vector2(-snake_dir.y, 0)
+            snake_dir_RU = Vector2(-snake_dir.y, snake_dir.y)
+            snake_dir_RD = Vector2(-snake_dir.y, -snake_dir.y)
         elif snake_dir.y == 0:
             snake_dir_L = Vector2(0, -snake_dir.x)
+            snake_dir_LU = Vector2(snake_dir.x, -snake_dir.x)
+            snake_dir_LD = Vector2(-snake_dir.x, -snake_dir.x)
             snake_dir_R = Vector2(0, snake_dir.x)
+            snake_dir_RU = Vector2(snake_dir.x, snake_dir.x)
+            snake_dir_RD = Vector2(-snake_dir.x, snake_dir.x)
         
-        state_status = [
-            # Danger detection
-            self.env.is_danger(snake_head + snake_sight * snake_dir),      # Danger Ahead
-            self.env.is_danger(snake_head + snake_sight * snake_dir_L),    # Danger Left
-            self.env.is_danger(snake_head + snake_sight * snake_dir_R),    # Danger Right
-
+        state_status = [ # 19 
             # Snake heading direction 0, 1, 0, 0
             snake_dir == DIR_UP, 
             snake_dir == DIR_DOWN,
             snake_dir == DIR_LEFT, 
             snake_dir == DIR_RIGHT,
 
-            # Food censoring
-            food_pos.x < snake_head.x,
-            food_pos.x > snake_head.x,
-            food_pos.y < snake_head.y,
-            food_pos.y > snake_head.y
+            # Danger detection, in seven direction, no back
+            self.env.is_danger(snake_head + snake_sight * snake_dir),      # Danger Ahead
+            self.env.is_danger(snake_head + snake_sight * snake_dir_L),    # Danger Left
+            self.env.is_danger(snake_head + snake_sight * snake_dir_LU),    # Danger Left-Up
+            self.env.is_danger(snake_head + snake_sight * snake_dir_LD),    # Danger Left-Down
+            self.env.is_danger(snake_head + snake_sight * snake_dir_R),    # Danger Right
+            self.env.is_danger(snake_head + snake_sight * snake_dir_RU),    # Danger Right-Up
+            self.env.is_danger(snake_head + snake_sight * snake_dir_RD),    # Danger Right-Down
+
+            # Food censoring, in eight direction
+            food_pos.x < snake_head.x and food_pos.y < snake_head.y,
+            food_pos.x == snake_head.x and food_pos.y < snake_head.y,
+            food_pos.x > snake_head.x and food_pos.y < snake_head.y,
+            food_pos.x < snake_head.x and food_pos.y == snake_head.y,
+            food_pos.x > snake_head.x and food_pos.y == snake_head.y,
+            food_pos.x < snake_head.x and food_pos.y > snake_head.y,
+            food_pos.x == snake_head.x and food_pos.y > snake_head.y,
+            food_pos.x > snake_head.x and food_pos.y > snake_head.y
         ]
         # print(state_status, food_pos, snake_head, snake_dir, snake_dir_L, snake_dir_R)
         return np.array(state_status, dtype=np.int32)
@@ -184,16 +213,45 @@ class DDQN_Agent(object):
         # new_weights = TAU * np.array(eval_weights, dtype=float) + (1-TAU) * np.array(targ_weights, dtype=float)
         self.dqn_targ_model.model.set_weights(eval_weights)
     
-    def save_model(self, default_file_path='model/ddqn_snake.h5'):
-        self.dqn_eval_model.save_model(default_file_path)
+    def save_model(self, file_path):
+        self.dqn_eval_model.save_model(file_path)
+        print('model saved ->', file_path)
     
     def load_model(self):
-        self.dqn_eval_model.load_model(self.input_path)
+        print('loading from ', str(self.file_path))
+        self.dqn_eval_model.load_model(self.file_path)
         self.dqn_targ_model = copy.deepcopy(self.dqn_eval_model).model
+        print('loading success')
+    
+    def plot_graph(self, scores, mean_scores):
+        # TODO
+        plt.ion()
+        display.clear_output(wait=True)
+        display.display(plt.gcf())
+        plt.clf()
+        plt.title('Training...')
+        plt.xlabel('Number of Games')
+        plt.ylabel('Score')
+        plt.plot(scores)
+        plt.plot(mean_scores)
+        plt.ylim(ymin=0)
+        plt.text(len(scores)-1, scores[-1], str(scores[-1]))
+        plt.text(len(mean_scores)-1, mean_scores[-1], str(mean_scores[-1]))
     
     def demo(self):
-        # TODO
-        pass
+        self.epsilon = 0
+        state = self.get_state()
+        onehot_action = self.get_action(state)
+        stop_demo, _, is_done, round_score = self.play_action(onehot_action)
+        # state = self.get_state()
+        if is_done:
+            self.env.reset_game_state()
+            if round_score > self.game_record:
+                print('New Record:', round_score)
+                self.game_record = round_score
+            self.round_count += 1
+            print('Round', self.round_count, 'Score', round_score, 'Record', self.game_record)
+        return stop_demo, self.game_record
     
     def trainer(self):
         # Collect and remember [curr_state, onehot_action, move_reward, new_state, is_done] status
@@ -204,26 +262,27 @@ class DDQN_Agent(object):
         
         state_action_sample = [curr_state, onehot_action, move_reward, new_state, is_done]
         self.remember(state_action_sample)
-        self.learn([state_action_sample], batch_size=1)
+        # _ = self.learn([state_action_sample], batch_size=1)
         
         if is_done:
             self.env.reset_game_state()
-            
             if round_score > self.game_record:
                 self.game_record = round_score
                 print('New record:', self.game_record)
-                self.save_model()
-            
+                self.save_model(self.default_file_path)
             sample_batch, new_batch_size = self.memory.random_sample(batch_size=BATCH_SIZE)
-            mse_loss = self.learn(sample_batch, batch_size=new_batch_size)
-            
+            mse_loss = 0
+            if new_batch_size != 0:
+                mse_loss = self.learn(sample_batch, batch_size=new_batch_size)            
             self.round_count += 1
-            print('Round', self.round_count, 'Score', round_score, 'Record', self.game_record, 'mse_loss', mse_loss)
-            
-        # if self.stop_training or self.game_record >= 10:
-        #     self.stop_training = True
-            
-        # TODO: Print traning messages and plots
+            print('Round', self.round_count, 'Score', round_score, 'Record', self.game_record, 'MSE_loss', mse_loss, 'Epsilon', self.epsilon)
+                       
+            # TODO: Print traning messages and plots
+            self.plot_scores.append(round_score)
+            self.total_score += round_score
+            mean_score = self.total_score / self.round_count
+            self.plot_mean_scores.append(mean_score)
+            self.plot_graph(self.plot_scores, self.plot_mean_scores)
             
         return self.stop_training, self.game_record
     
@@ -239,7 +298,6 @@ class DDQN_Agent(object):
         action_idx = np.dot(onehot_actions, action_idx_range) #(n, 3) dot (3,) => n
 
         """"""""
-
         # predict current state Q-values by using both model
         q_eval = self.dqn_eval_model.predict(curr_states)
         q_targ = self.dqn_targ_model.predict(curr_states) # Not-in-use
@@ -250,13 +308,12 @@ class DDQN_Agent(object):
         
         # Update new q_targets
         updated_q_targets = q_eval.copy()
-        max_act_idx = np.argmax(q_targ_new, axis=1).astype(np.int)
+        max_act_idx = np.argmax(q_targ_new, axis=1).astype(np.int32)
         sample_idx = np.arange(batch_size, dtype=np.int32)
         updated_q_targets[sample_idx, action_idx] = move_rewards + GAMMA * q_eval_new[sample_idx, max_act_idx] * (1-bool(is_dones))
         
         # Fit dqn_eval_model with curr_states and updated_q_targets
         self.dqn_eval_model.fit(curr_states, updated_q_targets, batch_size, verbose_level=0)
-
         """"""""
         
         # Calculate Mean_Squared_Error loss
@@ -264,7 +321,7 @@ class DDQN_Agent(object):
 
         # Decay epsilon
         if self.epsilon > EPSILON_MIN:
-            self.epsilon *= EPSILON_DECAY_RATE 
+            self.epsilon = self.epsilon * EPSILON_DECAY_RATE 
         else:
             # print('epsilon reaches minimum', EPSILON_MIN)
             self.epsilon = EPSILON_MIN
