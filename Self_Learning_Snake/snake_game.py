@@ -2,32 +2,38 @@ import sys
 import config
 import random
 import pygame
-# import numpy as np
 from pygame.math import Vector2
-# from collections import deque
 
 SURFACE = None
 
 class SNAKE:
+    """Snake Class
+    Defines the initial state of the snake, the look of the snake, as well as how the snake moves
+    - SNAKE.reset()
+    - SNAKE.draw_snake()
+    - SNAKE.move_snake()
+    """
     def __init__(self) -> None:
         self.reset()
         self.draw_snake()
 
-    def reset(self):
-        # Init or Reset the snake body position
-        # x_middle = int(config.CELL_NUMBER/2)
-        # y_middle = int(config.CELL_NUMBER/2)
-        # y_2 = int(y_middle + 1)
-        # y_3 = int(y_middle + 2)
-        x_rand = int(random.randint(0, config.CELL_NUMBER))
-        y_rand = int(random.randint(0, config.CELL_NUMBER))
-        self.body = [
-            Vector2(x_rand, y_rand)
-            ]
+    def reset(self) -> None:
+        """SNAKE.reset()
+        Reset the snake state to random position
+        SNAKE.body : list of Vector2 with x,y posions in {integer}
+        SNAKE.direction : initial direction is up
+        SNAKE.grow : False, {boolean}, whether the snake grows or not in the next update period 
+        """
+        x_rand = int(random.randint(0, config.CELL_NUMBER-1))
+        y_rand = int(random.randint(0, config.CELL_NUMBER-1))
+        self.body = [Vector2(x_rand, y_rand)]
         self.direction = config.DIR_UP
         self.grow = False
 
     def draw_snake(self):
+        """SNAKE.draw_snake()
+        For each body block, draw the snake
+        """
         for index, block in enumerate(self.body):
             body_block_rect = pygame.Rect(
                 int(block.x * config.CELL_SIZE),
@@ -35,9 +41,17 @@ class SNAKE:
                 config.CELL_SIZE,
                 config.CELL_SIZE
             )
-            pygame.draw.rect(SURFACE, config.SNAKE_COLOR, body_block_rect)
+            if index == 0: # Head
+                pygame.draw.rect(SURFACE, config.SNAKE_HEAD_COLOR, body_block_rect)
+            else: # Snake Body
+                pygame.draw.rect(SURFACE, config.SNAKE_BODY_COLOR, body_block_rect)
 
     def move_snake(self):
+        """SNAKE.move_snake()
+        Move the sanke by add the direction vector to the head of the snake list and then, 
+        if the snake is not growing -> remove the last vector from the list
+        if the snake is growing -> keep the list and change the grow status to False
+        """
         self.body.insert(0, self.body[0]+self.direction)
         if self.grow == False:
             self.body = self.body[:-1]
@@ -45,12 +59,21 @@ class SNAKE:
             self.grow = False
 
 class FOOD:
+    """ FOOD class
+    Define the food position and placement
+    - FOOD.get_random_pos(snake_body_list)
+    - FOOD.draw_food()
+    """
     def __init__(self, snake_body_list) -> None:
         self.get_random_pos(snake_body_list)
 
     def get_random_pos(self, snake_body_list):
-        new_x = random.randint(0, config.CELL_NUMBER-1)
-        new_y = random.randint(0, config.CELL_NUMBER-1)
+        """FOOD.get_random_pos(snake_body_list)
+        Get two random integer from [0, cell_number-1] as the new food position
+        if the new position is inside the snake_body, try again
+        """
+        new_x = int(random.randint(0, config.CELL_NUMBER-1))
+        new_y = int(random.randint(0, config.CELL_NUMBER-1))
         self.position = Vector2(new_x, new_y)
         if self.position in snake_body_list:
             self.get_random_pos(snake_body_list)
@@ -58,6 +81,9 @@ class FOOD:
             return self.position
 
     def draw_food(self):
+        """FOOD.draw_food()
+        Create and draw a food rectangle
+        """
         food_rect = pygame.Rect(
             int(self.position.x * config.CELL_SIZE),
             int(self.position.y * config.CELL_SIZE),
@@ -67,21 +93,32 @@ class FOOD:
         pygame.draw.rect(SURFACE, config.FOOD_COLOR, food_rect)
 
 class MAP:
+    """MAP class
+    Define how the map looks
+    In this simple map setting, fill the map color and set the caption name.
+    """
     def __init__(self) -> None:
         SURFACE.fill(config.MAP_COLOR)
         pygame.display.set_caption('The Snake Game')
 
 class SNAKE_GAME:
+    """ SNAKE_GAME class
+    Define how the game operates.
+    - SNAKE_GAME.reset_game_state()
+    - SNAKE_GAME.user_play()
+    - SNAKE_GAME.agent_play()
+    - SNAKE_GAME.update()
+    - SNAKE_GAME.draw_elements()
+    - SNAKE_GAME.status_check()
+    - SNAKE_GAME.is_danger()
+    """
     def __init__(self, surface, agent=False) -> None:
         # Global the game_surface
         global SURFACE
         SURFACE = surface
 
-        # Init pygame settings
-        if agent:
-            event_delay = config.AGENT_EVENT_DELAY
-        else:
-            event_delay = config.PLAYER_EVENT_DELAY
+        # Init pygame settings, event_delay is the game speed
+        event_delay = config.AGENT_EVENT_DELAY if agent else config.PLAYER_EVENT_DELAY
         pygame.time.set_timer(pygame.USEREVENT, event_delay)
         pygame.time.Clock().tick(config.FPS)
         
@@ -92,6 +129,16 @@ class SNAKE_GAME:
         self.reset_game_state()
 
     def reset_game_state(self):
+        """SNAKE_GAME.reset_game_state()
+        Reset the game state:
+            - reset snake
+            - get new food random posision
+            - score = 0
+            - reward = 0
+            - reset health point
+            - reset snake_food_distance (x+y)**2
+            - reset game_over status to False
+        """
         self.snake.reset()
         self.food.get_random_pos(self.snake.body)
         self.score = 0
@@ -101,6 +148,22 @@ class SNAKE_GAME:
         self.game_over = False
 
     def user_play(self):
+        """SNAKE_GAME.user_play()
+
+        INPUT: None
+        
+        OUTPUT: game_over, game_score 
+        
+        Define the operating steps for user interaction
+            - Collect user input: 
+                - four arrow keys for direction control
+                - esc for stop game and back to main_menu
+                - update the game when recieves user event
+            - fill the surface color
+            - draw each elements, snake and food
+            - update the pygame display
+            - return game_over status and game_score 
+        """
         # Collect user inputs
         for event in pygame.event.get():
             if event.type == pygame.QUIT:   # Quit the game
@@ -126,11 +189,31 @@ class SNAKE_GAME:
         SURFACE.fill(config.MAP_COLOR)
         self.draw_elements()
         pygame.display.update()
-
-        # Return game_over_status & game_score
         return self.game_over, self.score
 
     def agent_play(self, action_x, action_y):
+        """SNAKE_GAME.agent_play()
+        
+        INPUT: 
+            - action_x, for x coordinate of agent action
+            - action_y, for y coordinate of agent action
+
+        OUTPUT:
+            - stop_training {bool}
+            - reward {int}
+            - game_over {bool}
+            - score {int}
+        
+        Define the steps for agent interacion
+            - Collect human user key input
+                - esc for stop_training
+            - Convert agent action x,y to Vector2
+            - set the agent_action as the new direction
+            - update game environment
+            - fill the game surface to map color
+            - draw elements, snake and food
+            - update the pygame display
+        """
         # Collect agent input
         for event in pygame.event.get():
             if event.type == pygame.QUIT:   # Quit the game
@@ -139,31 +222,50 @@ class SNAKE_GAME:
             if event.type == pygame.KEYDOWN: # User key interaction             
                 e_key = event.key
                 if e_key == pygame.K_ESCAPE:    # esc -> main_menu
-                    stop_training = True
-                    return stop_training, self.reward, self.game_over, self.score
+                    return True, self.reward, self.game_over, self.score
 
         agent_action = Vector2(action_x, action_y)
-        # self.action_queue.append(agent_action)
         self.snake.direction = agent_action
         self.update()
         SURFACE.fill(config.MAP_COLOR)
         self.draw_elements()
         pygame.display.update()
-
-        # Return game_over_status & game_score
-        stop_training = False
-        return stop_training, self.reward, self.game_over, self.score
+        return False, self.reward, self.game_over, self.score
 
     def update(self):
+        """SNAKE_GAME.update()
+        steps to take to update the game environment
+            - Decrease the snake hp by one
+            - move the snake
+            - check the status of the snake (health, reward, etc.)
+        """
         self.health_point -= 1
         self.snake.move_snake()
         self.status_check()
 
     def draw_elements(self):
+        """SNAKE_GAME.draw_elements()
+        steps to take to draw the game
+            - draw food
+            - draw snake        
+        """
         self.food.draw_food()
         self.snake.draw_snake()
 
     def status_check(self):
+        """SNAKE_GAME.status_check()
+        - if snake eats a food
+            - score++
+            - reward = 30
+            - grow the snake
+            - generate new random food position
+            - reset snake hp
+        - if any death condition matched, (hit wall, itself, low_hp)
+            - reward = -100
+            - game over
+        - if snake is moving toward the food, reward = 1
+        - if snake is moving away from the food, reward = -5
+        """
         # snake eat the food
         if self.snake.body[0] == self.food.position:
             self.score += 1
@@ -189,6 +291,22 @@ class SNAKE_GAME:
         self.food_snake_dis = new_food_snake_dis
 
     def is_danger(self, pos):
+        """SNAKE_GAME.is_danger()
+        
+        INPUT: vector posion (x, y)
+        
+        OUTPUT: True/False {bool}
+
+        death condition:
+            - hit left wall, x < 0
+            - hit top wall, y < 0
+            - hit right wall, x > cell_number-1
+            - hit bottom wall, y > cell_number-1
+            - this position is in snake body list
+        
+        any death condition matched, return True
+        else, return False
+        """
         death_cond_list = [
             # pos in the wall
             pos.x < 0,
@@ -201,5 +319,4 @@ class SNAKE_GAME:
         ]
         if any(death_cond_list):
             return True
-        else:
-            return False
+        return False

@@ -5,6 +5,16 @@ from snake_ddqn_agent import DDQN_Agent
 from snake_game import SNAKE_GAME
 
 def play_snake_game():
+    """User Play Snake Game
+    This function let the user to play the snake game by himself.
+    - Disable & Reset main_menu
+    - Create a game_surface
+    - Init the game onto the game_surface
+    - Game loop:
+        - Show the game_surface
+        - Play the game and return the game-over status and game_score
+        - If game_over, print game_score and return & enable the main_menu
+    """
     print('Snake Game start')
     
     # Disable and reset the pygame_menu
@@ -33,6 +43,11 @@ def play_snake_game():
             return
 
 def agent_training(model_file_path):
+    """Agent Training
+    This function train an AI agent, 
+        - from fresh start if no model_file input, 
+        - or resume the training if has model_file input.
+    """
     if model_file_path == None:
         print('New Agent Training')
     else:
@@ -66,11 +81,14 @@ def agent_training(model_file_path):
             return
 
 def agent_demo(model_file_path):
+    """Agent Demo
+    This function let the trained agent to play the game with no learning.
+    """
+    print('Agent Demo')
+
     # Disable and reset the pygame_menu
     main_menu.disable()
     main_menu.full_reset()
-
-    print('Agent Demo')
 
     # Create a demo surface
     demo_surface = pygame.Surface((MAP_W, MAP_W))
@@ -78,8 +96,6 @@ def agent_demo(model_file_path):
     # Init the game and agent
     game_env = SNAKE_GAME(demo_surface, agent=False)
     agent = DDQN_Agent(game_env, model_file_path)
-
-    
 
     while model_file_path:
         # Built and flip the game_surface onto the main_surface
@@ -110,25 +126,35 @@ if __name__ == '__main__':
         height=MAP_H,
         theme=pygame_menu.themes.THEME_SOLARIZED
     )
+
+    # Add user play button
     main_menu.add.button(
         title='Play',
         action=play_snake_game
     )
+
+    # Add new agent training button
     main_menu.add.button(
         'New AI Training',
         agent_training,
         None
     )
+
+    # Add resume agent training button with model_file_path input
     main_menu.add.button(
         'Resume AI Training',
         agent_training,
         'model/ddqn_snake.h5'
     )
+
+    # Add agent demo button
     main_menu.add.button(
         'AI Demo',
         agent_demo,
         'model/ddqn_snake_demo.h5'
     )
+
+    # Add Quit Game button
     main_menu.add.button(
         title='Quit', 
         action=pygame_menu.events.EXIT
