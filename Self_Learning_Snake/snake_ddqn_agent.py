@@ -9,7 +9,6 @@ import tensorflow as tf
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.layers import InputLayer, Dense
 from tensorflow.keras.models import Sequential, load_model
-from tensorflow.keras.losses import mean_squared_error
 from pygame.math import Vector2
 import matplotlib.pyplot as plt
 from IPython import display
@@ -46,7 +45,6 @@ class ReplayMemory(object):
 
     def random_sample(self, batch_size):
         if len(self.memory) < batch_size:
-            # sample_batch = self.memory
             return [], 0
         else:
             sample_batch = random.sample(self.memory, batch_size)

@@ -19,9 +19,8 @@ DIR_RIGHT = Vector2(1, 0)
 # Define color of game elements
 MAP_COLOR = (255, 255, 255)
 FOOD_COLOR = (255, 0, 0)
-SNAKE_COLOR = (0, 0, 0)
-# SNAKE_BODY_COLOR = (0, 215, 0)
-# SNAKE_TAIL_COLOR = (0, 0, 215)
+SNAKE_HEAD_COLOR = (0, 0, 0) # color : black
+SNAKE_BODY_COLOR = (79, 79, 79) # color : #474747
 SNAKE_CELL_HP = 100
 
 # Define training parameters
