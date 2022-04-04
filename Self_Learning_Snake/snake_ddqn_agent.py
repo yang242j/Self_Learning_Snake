@@ -168,7 +168,8 @@ class DDQN_Agent(object):
         - self.sync_model() -> Synchronize the weights of evaluation_model to the target_model
         - self.save_model(file_path) -> Save the model to the given file_path
         - self.load_model() -> Load the model from the pre_defined file_path in the __init__()
-        - self.plot_graph(score_list, mean_score_list, loss_list) -> Plot the graph with given data
+        - self.plot_loss() -> Plot and save the loss graph
+        - self.plot_graph(score_list, mean_score_list) -> Plot and save the score graph
         - self.demo() -> Play the game with 0 epsilon and no learning
         - self.trainer() -> Agent training algorithm/steps
         - self.learn(training_sample, batch_size) -> Double-Deep-Q-Network learning algorithm
