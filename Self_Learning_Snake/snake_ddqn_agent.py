@@ -462,21 +462,28 @@ class DDQN_Agent(object):
         
         # Round is over
         if is_done:
+            # Reset game env
             self.env.reset_game_state()
-            self.round_count += 1
-            self.early_stopping_cd -= 1
+            
+            # Remember transition
+            sample_batch, new_batch_size = self.memory.random_sample(batch_size=BATCH_SIZE)
+            
+            # model learn and return loss 
+            mse_loss = 0
+            if new_batch_size != 0:
+                mse_loss = self.learn(sample_batch, batch_size=new_batch_size)[0]
+
+            # Record breaking
             if round_score > self.game_record:
                 self.game_record = round_score
                 self.early_stopping_cd = EARLY_STOPPING
                 print('New record:', self.game_record)
                 self.save_model(self.default_file_path)
-            sample_batch, new_batch_size = self.memory.random_sample(batch_size=BATCH_SIZE)
-            mse_loss = 0
-            if new_batch_size != 0:
-                mse_loss = self.learn(sample_batch, batch_size=new_batch_size)[0]
 
             # Print training message
+            self.round_count += 1
             if self.epsilon == EPSILON_MIN:
+                self.early_stopping_cd -= 1
                 print('Round', self.round_count, 'Score', round_score, 'Record', self.game_record, 'Early_Stopping', self.early_stopping_cd)
             else:
                 print('Round', self.round_count, 'Score', round_score, 'Record', self.game_record, 'Epsilon %.4f' % self.epsilon)
