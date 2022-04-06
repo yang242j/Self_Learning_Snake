@@ -34,6 +34,10 @@ EPSILON_MIN = config.EPSILON_MIN # @param {type:"number"}
 BATCH_SIZE = config.BATCH_SIZE # @param {type:"integer"}
 MAX_MEMORY = config.MAX_MEMORY # @param {type:"integer"}
 
+STATE_LEN = 19
+ACTION_RANGE = 3
+FC_DIM = 256
+
 class ReplayMemory(object):
     """ Replay Memory Pool
     Store the traing data in a memory pool for future training
@@ -178,8 +182,8 @@ class DDQN_Agent(object):
         # Init Instances
         self.env = game_env
         self.memory = ReplayMemory()
-        self.dqn_eval_model = NeuralNetwork(input_shape=19, output_shape=3, fc_dim=256, learning_rate=LR)
-        self.dqn_targ_model = NeuralNetwork(input_shape=19, output_shape=3, fc_dim=256, learning_rate=LR)
+        self.dqn_eval_model = NeuralNetwork(input_shape=STATE_LEN, output_shape=ACTION_RANGE, fc_dim=FC_DIM, learning_rate=LR)
+        self.dqn_targ_model = NeuralNetwork(input_shape=STATE_LEN, output_shape=ACTION_RANGE, fc_dim=FC_DIM, learning_rate=LR)
         
         # Init training parameters
         self.game_record = 0
@@ -352,7 +356,10 @@ class DDQN_Agent(object):
         # Load the evaluation model from the file_path and deep copy it as the target model
         print('loading from ', str(self.file_path))
         self.dqn_eval_model.load_model(self.file_path)
-        self.dqn_targ_model = copy.deepcopy(self.dqn_eval_model).model
+        # print(self.dqn_eval_model.model.summary())
+        self.dqn_targ_model = copy.deepcopy(self.dqn_eval_model)
+        self.dqn_targ_model.build(STATE_LEN, ACTION_RANGE, FC_DIM, LR)
+        # print(self.dqn_targ_model.model.summary())
         print('loading success')
     
     def plot_loss(self):
