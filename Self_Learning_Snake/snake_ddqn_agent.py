@@ -37,6 +37,7 @@ MAX_MEMORY = config.MAX_MEMORY # @param {type:"integer"}
 STATE_LEN = 19
 ACTION_RANGE = 3
 FC_DIM = config.FC_DIM # @param {type:"integer"}
+EARLY_STOPPING = config.EARLY_STOPPING # @param {type:"integer"}
 
 class ReplayMemory(object):
     """ Replay Memory Pool
@@ -188,6 +189,7 @@ class DDQN_Agent(object):
         # Init training parameters
         self.game_record = 0
         self.round_count = 0
+        self.early_stopping_cd = EARLY_STOPPING
         self.epsilon = EPSILON
         self.stop_training = False
 
@@ -461,16 +463,23 @@ class DDQN_Agent(object):
         # Round is over
         if is_done:
             self.env.reset_game_state()
+            self.round_count += 1
+            self.early_stopping_cd -= 1
             if round_score > self.game_record:
                 self.game_record = round_score
+                self.early_stopping_cd = EARLY_STOPPING
                 print('New record:', self.game_record)
                 self.save_model(self.default_file_path)
             sample_batch, new_batch_size = self.memory.random_sample(batch_size=BATCH_SIZE)
             mse_loss = 0
             if new_batch_size != 0:
-                mse_loss = self.learn(sample_batch, batch_size=new_batch_size)[0]         
-            self.round_count += 1
-            print('Round', self.round_count, 'Score', round_score, 'Record', self.game_record, 'Epsilon %.4f' % self.epsilon)
+                mse_loss = self.learn(sample_batch, batch_size=new_batch_size)[0]
+
+            # Print training message
+            if self.epsilon == EPSILON_MIN:
+                print('Round', self.round_count, 'Score', round_score, 'Record', self.game_record, 'Early_Stopping', self.early_stopping_cd)
+            else:
+                print('Round', self.round_count, 'Score', round_score, 'Record', self.game_record, 'Epsilon %.4f' % self.epsilon)
                        
             # Plot score graph
             self.score_list.append(round_score)
@@ -480,6 +489,10 @@ class DDQN_Agent(object):
             # Plot loss graph
             self.loss_list.append(mse_loss)
             self.plot_loss()
+
+        # Pending stop training
+        if self.epsilon == EPSILON_MIN and self.early_stopping_cd == 0:
+            self.stop_training = True
             
         return self.stop_training, self.game_record
     
