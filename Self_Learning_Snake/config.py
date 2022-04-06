@@ -24,7 +24,7 @@ SNAKE_BODY_COLOR = (79, 79, 79) # color : #474747
 SNAKE_CELL_HP = 100
 
 # Define training parameters
-# MODEL_PATH = 'model'
+FC_DIM = 256
 MAX_MEMORY = 10000
 BATCH_SIZE = 64
 EPSILON = 1.0

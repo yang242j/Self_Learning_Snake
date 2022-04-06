@@ -36,7 +36,7 @@ MAX_MEMORY = config.MAX_MEMORY # @param {type:"integer"}
 
 STATE_LEN = 19
 ACTION_RANGE = 3
-FC_DIM = 256
+FC_DIM = config.FC_DIM # @param {type:"integer"}
 
 class ReplayMemory(object):
     """ Replay Memory Pool
