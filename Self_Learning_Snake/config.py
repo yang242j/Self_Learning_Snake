@@ -26,7 +26,7 @@ SNAKE_CELL_HP = 100 # Health points of each snake cell, long the snake, higher t
 
 # Define training parameters
 FC_DIM = 256 # Number of hidden nodes in each fully connected hidden layers
-EARLY_STOPPING = 100 # Number of round to train without record breaking
+EARLY_STOPPING = 500 # Number of round to train without record breaking
 MAX_MEMORY = 10000 # How big the memory pool is, number of transition samples
 BATCH_SIZE = 64 # How many samples random collected each traning cycle
 EPSILON = 1.0 # Start randomness, 1.0 -> 100% random actions 
