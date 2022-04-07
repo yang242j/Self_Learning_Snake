@@ -483,7 +483,7 @@ class DDQN_Agent(object):
             # Print training message
             self.round_count += 1
             if self.epsilon == EPSILON_MIN:
-                self.early_stopping_cd -= 1
+                self.early_stopping_cd -= 1 # comment out, if do not want early stopping
                 print('Round', self.round_count, 'Score', round_score, 'Record', self.game_record, 'Early_Stopping', self.early_stopping_cd)
             else:
                 print('Round', self.round_count, 'Score', round_score, 'Record', self.game_record, 'Epsilon %.4f' % self.epsilon)
